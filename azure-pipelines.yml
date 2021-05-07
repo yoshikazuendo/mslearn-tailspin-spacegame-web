@@ -41,23 +41,12 @@ steps:
   inputs:
     command: restore
     projects: '**/*.csproj'
-  # ビルドする
-- task: DotNetCoreCLI@2
-  displayName: Build the project - $(buildConfiguration)
-  inputs:
-    command: build
-    arguments: --no-restore --configuration $(buildConfiguration)
-    projects: '**/*.csproj'
-  # 成果物を.zipファイル化する
-- task: DotNetCoreCLI@2
-  displayName: Publish the project - $(buildConfiguration)
-  inputs:
-    command: publish
-    projects: '**/*.csproj'
-    publishWebProjects: false
-    arguments: --no-build --configuration $(buildConfiguration) --output $(Build.ArtifactStagingDirectory)/$(buildConfiguration)
-    # ビルドされた成果物を.zipファイルに追加する
-    zipAfterPublish: true
+  # テンプレートのyamlファイルを呼び出して、それぞれのビルドモードでビルドを行う
+- template: templates/build.yml
+  parameters:
+    buildConfiguration: Debug
+  parameters:
+    buildConfiguration: Release
   # Azure Pipelinesに.zipファイルを発行する
 - task: PublishBuildArtifacts@1
   displayName: 'Publish Artifact: drop'
