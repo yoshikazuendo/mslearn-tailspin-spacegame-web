@@ -45,15 +45,38 @@ steps:
     arguments: '--no-restore --configuration $(buildConfiguration)'
     projects: '**/*.csproj'
 
-# 単体テストを実行する
+# マニフェストファイル（dotnet-tools.json）にリストされているツールをインストールする
+- task: DotNetCoreCLI@2
+  displayName: Install .NET Core tools from local manifest
+  inputs:
+    command: custom
+    custom: tool
+    arguments: restore
+
+# 単体テストを実行する＆コードカバレッジをCobertura形式で収集する
 - task: DotNetCoreCLI@2
   displayName: Run unit tests - $(buildConfiguration)
   inputs:
     command: test
-    arguments: --no-build --configuration $(buildConfiguration)
+    arguments: --no-build --configuration $(buildConfiguration) /p:CollectCoverage=true /p:CoverletOutputFormat=cobertura /p:CoverletOutput=$(Build.SourcesDirectory)/TestResults/Coverage/
     # --logger trxの代わり。テスト結果trxファイルを一時ディレクトリに生成する
     publishTestResults: true
     projects: '**/*.Tests.csproj'
+
+# Cobertura形式をHTMLに変換する
+- task: DotNetCoreCLI@2
+  displayName: Create code coverage report
+  inputs:
+    command: custom
+    custom: tool
+    arguments: run reportgenerator -reports:$(Build.SourcesDirectory)/**/coverage.cobertura.xml -targetdir:$(Build.SourcesDirectory)/CodeCoverage -reporttypes:HtmlInline_AzurePipelines
+
+# パイプラインにレポートを表示する
+- task: PublishCodeCoverageResults@1
+  displayName: Publish code coverage report
+  inputs:
+    codeCoverageTool: cobertura
+    summaryFileLocation: $(Build.SourcesDirectory)/**/coverage.cobertura.xml
 
 - task: DotNetCoreCLI@2
   displayName: 'Publish the project - $(buildConfiguration)'
