@@ -1,0 +1,21 @@
+# parametersセクション：入力を定義するもの
+parameters:
+  buildConfiguration: Release
+steps:
+- task: DotNetCoreCLI@2
+  # パラメータの値を読み取る場合は${{parameters.HOGE}}構文を使う。
+  displayName: Build the project - ${{ parameters.buildConfiguration }}
+  inputs:
+    command: build
+    arguments: --no-restore --configuration ${{ parameters.buildConfiguration }}
+    projects: '**/*.csproj'
+  # 成果物を.zipファイル化する
+- task: DotNetCoreCLI@2
+  displayName: Publish the project - ${{ parameters.buildConfiguration }}
+  inputs:
+    command: publish
+    projects: '**/*.csproj'
+    publishWebProjects: false
+    arguments: --no-build --configuration ${{ parameters.buildConfiguration }} --output $(Build.ArtifactStagingDirectory)/${{ parameters.buildConfiguration }}
+    # ビルドされた成果物を.zipファイルに追加する
+    zipAfterPublish: true
