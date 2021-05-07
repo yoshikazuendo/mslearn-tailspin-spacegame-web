@@ -1,16 +1,52 @@
+### YamlMime:Yaml
+ms.openlocfilehash: f45b0605ba62c4c7622de7d0ec598c4d71e09614
+ms.sourcegitcommit: 52128e1e0cb6e7de6806013aec318b8c01dd2376
+ms.translationtype: HT
+ms.contentlocale: ja-JP
+ms.lasthandoff: 02/14/2021
+ms.locfileid: "104284474"
 trigger:
 - '*'
 pool:
-  vmImage: ubuntu-latest
+  vmImage: ubuntu-18.04
+  # ビルドシステムにnpmをインストールする
   demands:
   - npm
 variables:
   buildConfiguration: Release
 steps:
-  - task: UseDotNet@2
-    displayName: Use .NET Core SDK 3.1.300
-    inputs:
-      packageType: sdk
-      version: 3.1.300
-  - script: dotnet build --configuration $(buildConfiguration)
-    displayName: 'dotnet build $(buildConfiguration)'
+  # ビルドエージェントに必要な.NET Core SDKをインストールする
+- task: UseDotNet@2
+  displayName: Use .NET Core SDK 3.1.300
+  inputs:
+    packageType: sdk
+    version: 3.1.300
+  # ビルドエージェントに必要なnpmをインストールする
+- task: Npm@1
+  displayName: Run npm install
+  inputs:
+    verbose: false
+- script: ./node_modules/.bin/node-sass Tailspin.SpaceGame.Web/wwwroot --output Tailspin.SpaceGame.Web/wwwroot
+  displayName: Compile Sass assets
+  # ビルド情報をファイル出力する（Pipelineで提供される組み込み変数を出力している）
+  # Build.DefinitionName ：Pipelineの名前
+  # Build.BuildId        ：完了したビルドの識別子
+  # Build.BuildNumber    ：完了したビルドの名前
+- task: gulp@1
+  displayName: Run gulp tasks
+- script: echo "$(Build.DefinitionName), $(Build.BuildId), $(Build.BuildNumber)" > buildinfo.txt
+  displayName: Write build info
+  workingDirectory: Tailspin.SpaceGame.Web/wwwroot
+  # ビルドに必要な依存関係を復元・インストールする
+- task: DotNetCoreCLI@2
+  displayName: Restore project dependencies
+  inputs:
+    command: restore
+    projects: '**/*.csproj'
+  # ビルドする
+- task: DotNetCoreCLI@2
+  displayName: Build the project - Release
+  inputs:
+    command: build
+    arguments: --no-restore --configuration Release
+    projects: '**/*.csproj'
